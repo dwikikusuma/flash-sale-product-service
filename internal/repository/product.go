@@ -1,6 +1,12 @@
 package repository
 
-import "product-catalog-service/internal/entity"
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"product-catalog-service/internal/entity"
+	log "product-catalog-service/internal/infrastructure"
+)
 
 // ProductRepository defines the interface for product-related database operations.
 type ProductRepository interface {
@@ -10,7 +16,7 @@ type ProductRepository interface {
 	// Returns:
 	//   - A pointer to the Product entity if found, or nil if not found.
 	//   - An error if any issues occur during retrieval.
-	GetProductByID(id int64) (*entity.Product, error)
+	GetProductByID(ctx context.Context, id int64) (*entity.Product, error)
 
 	// CreateProduct creates a new product in the repository.
 	// Parameters:
@@ -26,25 +32,28 @@ type ProductRepository interface {
 	// Returns:
 	//   - A pointer to the updated Product entity.
 	//   - An error if any issues occur during the update.
-	UpdateProduct(product *entity.Product) (*entity.Product, error)
+	UpdateProduct(ctx context.Context, product *entity.Product) (*entity.Product, error)
 
 	// DeleteProduct deletes a product from the repository by its ID.
 	// Parameters:
 	//   - id: The ID of the product to delete.
 	// Returns:
 	//   - An error if any issues occur during deletion.
-	DeleteProduct(id int64) error
+	DeleteProduct(ctx context.Context, id int64) error
 }
 
 // productRepository is a concrete implementation of the ProductRepository interface.
 type productRepository struct {
+	cache CacheRepository
 }
 
 // NewProductRepository creates a new instance of productRepository.
 // Returns:
 //   - A ProductRepository instance.
-func NewProductRepository() ProductRepository {
-	return &productRepository{}
+func NewProductRepository(cacheRepo CacheRepository) ProductRepository {
+	return &productRepository{
+		cache: cacheRepo,
+	}
 }
 
 // products is an in-memory store simulating a database for products.
@@ -72,12 +81,37 @@ var products = map[int64]*entity.Product{
 // Returns:
 //   - A pointer to the Product entity if found, or nil if not found.
 //   - An error if any issues occur during retrieval.
-func (r *productRepository) GetProductByID(id int64) (*entity.Product, error) {
+func (r *productRepository) GetProductByID(ctx context.Context, id int64) (*entity.Product, error) {
+	key := fmt.Sprintf("product:%d", id)
+	productCache, err := r.cache.Get(ctx, key)
+	if err != nil {
+		log.Logger.Error().Err(err).Int64("productID", id).Msg("Failed to get product from cache")
+		return nil, fmt.Errorf("failed to get product from cache: %w", err)
+	}
+
+	if productCache != "" {
+		var productFromCache entity.Product
+		if err := json.Unmarshal([]byte(productCache), &productFromCache); err != nil {
+			log.Logger.Error().Err(err).Int64("productID", id).Msg("Failed to unmarshal product from cache")
+			return nil, fmt.Errorf("failed to unmarshal product from cache: %w", err)
+		}
+		return &productFromCache, nil
+	}
+
 	product, ok := products[id]
 	if !ok {
-		return nil, nil // Product not found
+		log.Logger.Warn().Int64("productID", id).Msg("Product not found")
+		return nil, nil // Product not found, return nil
 	}
+
+	// Cache the product for future requests
+	if err := r.cache.Set(ctx, key, product); err != nil {
+		log.Logger.Error().Err(err).Int64("productID", id).Msg("Failed to set product in cache")
+		return nil, fmt.Errorf("failed to set product in cache: %w", err)
+	}
+
 	return product, nil
+
 }
 
 // CreateProduct adds a new product to the in-memory store.
@@ -100,7 +134,13 @@ func (r *productRepository) CreateProduct(product *entity.Product) (*entity.Prod
 // Returns:
 //   - A pointer to the updated Product entity.
 //   - An error if any issues occur during the update.
-func (r *productRepository) UpdateProduct(product *entity.Product) (*entity.Product, error) {
+func (r *productRepository) UpdateProduct(ctx context.Context, product *entity.Product) (*entity.Product, error) {
+	key := fmt.Sprintf("product:%d", product.ID)
+	err := r.cache.Set(ctx, key, product)
+	if err != nil {
+		log.Logger.Error().Err(err).Int64("productID", product.ID).Msg("Failed to update product in cache")
+		return nil, fmt.Errorf("failed to update product in cache: %w", err)
+	}
 	products[product.ID] = product
 	return product, nil
 }
@@ -111,7 +151,12 @@ func (r *productRepository) UpdateProduct(product *entity.Product) (*entity.Prod
 //
 // Returns:
 //   - An error if any issues occur during deletion.
-func (r *productRepository) DeleteProduct(id int64) error {
+func (r *productRepository) DeleteProduct(ctx context.Context, id int64) error {
 	delete(products, id)
+	err := r.cache.Delete(ctx, fmt.Sprintf("product:%d", id))
+	if err != nil {
+		log.Logger.Error().Err(err).Int64("productID", id).Msg("Failed to delete product from cache")
+		return fmt.Errorf("failed to delete product from cache: %w", err)
+	}
 	return nil
 }

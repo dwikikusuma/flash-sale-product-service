@@ -20,9 +20,9 @@ func main() {
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(echojwt.JWT("secrete"))
+	e.Use(echojwt.JWT([]byte("secret")))
 
 	productHandler.RegisterRoutes(e)
 
-	e.Logger.Fatal(e.Start(":8080"))
+	e.Logger.Fatal(e.Start(":8081"))
 }
