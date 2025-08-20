@@ -4,18 +4,20 @@ import (
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"product-catalog-service/infrastructure/log"
 	"product-catalog-service/internal/api"
-	"product-catalog-service/internal/infrastructure"
 	"product-catalog-service/internal/repository"
-	"product-catalog-service/internal/routes"
+	"product-catalog-service/internal/resource"
 	"product-catalog-service/internal/service"
+	infrastructure2 "product-catalog-service/middleware"
+	"product-catalog-service/routes"
 	"time"
 )
 
 func main() {
-	infrastructure.InitLogger()
+	log.InitLogger()
 
-	redisClient := infrastructure.InitRedis()
+	redisClient := resource.InitRedis()
 
 	cacheRepo := repository.NewCacheRepository(redisClient)
 	productRepo := repository.NewProductRepository(cacheRepo)
@@ -23,7 +25,7 @@ func main() {
 	productHandler := api.NewProductHandler(productService)
 
 	e := echo.New()
-	e.Use(middleware.RateLimiterWithConfig(infrastructure.GetRateLimiter()))
+	e.Use(middleware.RateLimiterWithConfig(infrastructure2.GetRateLimiter()))
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(middleware.ContextTimeout(10 * time.Second))

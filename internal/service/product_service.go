@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"errors"
-	log "product-catalog-service/internal/infrastructure"
+	"product-catalog-service/infrastructure/log"
 	"product-catalog-service/internal/repository"
 )
 

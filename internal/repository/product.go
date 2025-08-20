@@ -4,8 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"product-catalog-service/infrastructure/log"
 	"product-catalog-service/internal/entity"
-	log "product-catalog-service/internal/infrastructure"
 )
 
 // ProductRepository defines the interface for product-related database operations.
