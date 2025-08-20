@@ -38,13 +38,14 @@ func (ph *productHandler) RegisterRoutes(e *echo.Echo) {
 // GetProductStock retrieves the stock information for a specific product by its ID.
 // product/{id}/stock
 func (ph *productHandler) GetProductStock(c echo.Context) error {
+	ctx := c.Request().Context()
 	productIDStr := c.Param("id")
 	productID, err := strconv.ParseInt(productIDStr, 10, 64)
 	if err != nil {
 		return c.JSON(400, map[string]string{"error": "Invalid product ID"})
 
 	}
-	productStock, err := ph.ProductService.GetProductStock(productID)
+	productStock, err := ph.ProductService.GetProductStock(ctx, productID)
 	if err != nil {
 		return c.JSON(500, map[string]string{"error": "Failed to retrieve product stock"})
 	}
@@ -57,12 +58,13 @@ func (ph *productHandler) GetProductStock(c echo.Context) error {
 func (ph *productHandler) ReserveProductStock(c echo.Context) error {
 	var request entity.StockReservation
 
+	ctx := c.Request().Context()
 	err := c.Bind(&request)
 	if err != nil {
 		return c.JSON(400, map[string]string{"error": "Invalid request format"})
 	}
 
-	isSuccess, err := ph.ProductService.ReserveProductStock(request.ProductID, request.Quantity)
+	isSuccess, err := ph.ProductService.ReserveProductStock(ctx, request.ProductID, request.Quantity)
 	if err != nil {
 		return c.JSON(500, map[string]string{"error": "Failed to reserve product stock"})
 	} else if !isSuccess {
@@ -76,13 +78,14 @@ func (ph *productHandler) ReserveProductStock(c echo.Context) error {
 // product/release
 func (ph *productHandler) ReleaseProductStock(c echo.Context) error {
 	var request entity.StockReservation
+	ctx := c.Request().Context()
 
 	err := c.Bind(&request)
 	if err != nil {
 		return c.JSON(400, map[string]string{"error": "Invalid request format"})
 	}
 
-	isSuccess, err := ph.ProductService.ReleaseProductStock(request.ProductID, request.Quantity)
+	isSuccess, err := ph.ProductService.ReleaseProductStock(ctx, request.ProductID, request.Quantity)
 	if err != nil {
 		return c.JSON(500, map[string]string{"error": "Failed to release product stock"})
 	} else if !isSuccess {
