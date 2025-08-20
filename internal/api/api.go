@@ -15,8 +15,6 @@ type ProductHandler interface {
 	ReleaseProductStock(c echo.Context) error
 	GetProductStock(c echo.Context) error
 	ReserveProductStock(c echo.Context) error
-
-	RegisterRoutes(e *echo.Echo)
 }
 
 type productHandler struct {
@@ -27,12 +25,6 @@ func NewProductHandler(productService service.ProductService) ProductHandler {
 	return &productHandler{
 		ProductService: productService,
 	}
-}
-
-func (ph *productHandler) RegisterRoutes(e *echo.Echo) {
-	e.GET("/product/:id/stock", ph.GetProductStock)    // Get product stock by ID
-	e.POST("/product/reserve", ph.ReserveProductStock) // Reserve product stock
-	e.POST("/product/release", ph.ReleaseProductStock) // Release product stock
 }
 
 // GetProductStock retrieves the stock information for a specific product by its ID.

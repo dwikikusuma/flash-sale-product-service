@@ -7,6 +7,7 @@ import (
 	"product-catalog-service/internal/api"
 	"product-catalog-service/internal/infrastructure"
 	"product-catalog-service/internal/repository"
+	"product-catalog-service/internal/routes"
 	"product-catalog-service/internal/service"
 	"time"
 )
@@ -28,7 +29,7 @@ func main() {
 	e.Use(middleware.ContextTimeout(10 * time.Second))
 	e.Use(echojwt.JWT([]byte("secret")))
 
-	productHandler.RegisterRoutes(e)
+	routes.SetupRoutes(e, productHandler)
 
 	e.Logger.Fatal(e.Start(":8081"))
 }
