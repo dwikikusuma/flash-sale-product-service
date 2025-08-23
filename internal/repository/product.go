@@ -141,11 +141,7 @@ func (r *productRepository) UpdateProduct(ctx context.Context, product *entity.P
 		return nil, fmt.Errorf("failed to update product in cache: %w", err)
 	}
 
-	updatedProduct, err := r.GetProductByID(ctx, product.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve updated product: %w", err)
-	}
-	return updatedProduct, nil
+	return product, nil
 }
 
 // DeleteProduct removes a product from the in-memory store by its ID.
