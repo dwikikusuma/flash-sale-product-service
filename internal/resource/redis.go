@@ -1,11 +1,16 @@
 package resource
 
-import "github.com/go-redis/redis/v8"
+import (
+	"fmt"
+	"product-catalog-service/config"
 
-func InitRedis() *redis.Client {
+	"github.com/go-redis/redis/v8"
+)
+
+func InitRedis(appConfig config.Config) *redis.Client {
 	redisClient := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "root",
+		Addr:     fmt.Sprintf("%s:%s", appConfig.Redis.Host, appConfig.Redis.Port),
+		Password: appConfig.Redis.Password,
 	})
 	return redisClient
 }

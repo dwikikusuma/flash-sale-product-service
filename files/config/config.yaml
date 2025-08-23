@@ -1,0 +1,17 @@
+app:
+  port: 8081
+
+db:
+  host: 127.0.0.1
+  port: 3306
+  user: admin
+  password: password
+  name: productdb
+
+secret:
+  jwtsecret: "secret"
+  
+redis:
+    host: 127.0.0.1
+    port: 6379
+    password: "root"
