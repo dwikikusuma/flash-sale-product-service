@@ -85,7 +85,7 @@ func (r *productRepository) GetProductByID(ctx context.Context, id int64) (*enti
 		return &productFromCache, nil
 	}
 
-	var product *entity.Product
+	var product entity.Product
 	err = r.db.Table("products").WithContext(ctx).Where("id = ?", id).First(&product).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
@@ -101,8 +101,7 @@ func (r *productRepository) GetProductByID(ctx context.Context, id int64) (*enti
 		return nil, fmt.Errorf("failed to set product in cache: %w", err)
 	}
 
-	return product, nil
-
+	return &product, nil
 }
 
 // CreateProduct adds a new product to the in-memory store.
