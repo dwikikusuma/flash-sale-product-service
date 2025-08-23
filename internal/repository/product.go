@@ -3,9 +3,12 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"product-catalog-service/infrastructure/log"
 	"product-catalog-service/internal/entity"
+
+	"gorm.io/gorm"
 )
 
 // ProductRepository defines the interface for product-related database operations.
@@ -24,7 +27,7 @@ type ProductRepository interface {
 	// Returns:
 	//   - A pointer to the created Product entity.
 	//   - An error if any issues occur during creation.
-	CreateProduct(product *entity.Product) (*entity.Product, error)
+	CreateProduct(ctx context.Context, product *entity.Product) error
 
 	// UpdateProduct updates an existing product in the repository.
 	// Parameters:
@@ -45,33 +48,17 @@ type ProductRepository interface {
 // productRepository is a concrete implementation of the ProductRepository interface.
 type productRepository struct {
 	cache CacheRepository
+	db    *gorm.DB
 }
 
 // NewProductRepository creates a new instance of productRepository.
 // Returns:
 //   - A ProductRepository instance.
-func NewProductRepository(cacheRepo CacheRepository) ProductRepository {
+func NewProductRepository(cacheRepo CacheRepository, db *gorm.DB) ProductRepository {
 	return &productRepository{
 		cache: cacheRepo,
+		db:    db,
 	}
-}
-
-// products is an in-memory store simulating a database for products.
-var products = map[int64]*entity.Product{
-	1: {
-		ID:          1,
-		Name:        "Product A",
-		Description: "Description of Product A",
-		Price:       100.0,
-		Stock:       50,
-	},
-	2: {
-		ID:          2,
-		Name:        "Product B",
-		Description: "Description of Product B",
-		Price:       200.0,
-		Stock:       30,
-	},
 }
 
 // GetProductByID retrieves a product by its ID from the in-memory store.
@@ -98,10 +85,14 @@ func (r *productRepository) GetProductByID(ctx context.Context, id int64) (*enti
 		return &productFromCache, nil
 	}
 
-	product, ok := products[id]
-	if !ok {
-		log.Logger.Warn().Int64("productID", id).Msg("Product not found")
-		return nil, nil // Product not found, return nil
+	var product *entity.Product
+	err = r.db.Table("products").WithContext(ctx).Where("id = ?", id).First(&product).Error
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		log.Logger.Error().Err(err).Int64("productID", id).Msg("Failed to get product from database")
+		return nil, errors.New("failed to get product from database")
 	}
 
 	// Cache the product for future requests
@@ -121,10 +112,13 @@ func (r *productRepository) GetProductByID(ctx context.Context, id int64) (*enti
 // Returns:
 //   - A pointer to the created Product entity.
 //   - An error if any issues occur during creation.
-func (r *productRepository) CreateProduct(product *entity.Product) (*entity.Product, error) {
-	product.ID = int64(len(products) + 1) // Simulating an auto-generated ID
-	products[product.ID] = product
-	return product, nil
+func (r *productRepository) CreateProduct(ctx context.Context, product *entity.Product) error {
+	err := r.db.Table("products").WithContext(ctx).Create(product).Error
+	if err != nil {
+		log.Logger.Error().Err(err).Msg("Failed to create product in database")
+		return errors.New("failed to create product in database: %w")
+	}
+	return nil
 }
 
 // UpdateProduct updates an existing product in the in-memory store.
@@ -135,14 +129,23 @@ func (r *productRepository) CreateProduct(product *entity.Product) (*entity.Prod
 //   - A pointer to the updated Product entity.
 //   - An error if any issues occur during the update.
 func (r *productRepository) UpdateProduct(ctx context.Context, product *entity.Product) (*entity.Product, error) {
-	key := fmt.Sprintf("product:%d", product.ID)
-	err := r.cache.Set(ctx, key, product)
+	err := r.db.Table("products").WithContext(ctx).Save(product).Error
+	if err != nil {
+		log.Logger.Error().Err(err).Int64("productID", product.ID).Msg("Failed to update product in database")
+		return nil, errors.New("failed to update product in database")
+	}
+
+	err = r.cache.Set(ctx, fmt.Sprintf("product:%d", product.ID), product)
 	if err != nil {
 		log.Logger.Error().Err(err).Int64("productID", product.ID).Msg("Failed to update product in cache")
 		return nil, fmt.Errorf("failed to update product in cache: %w", err)
 	}
-	products[product.ID] = product
-	return product, nil
+
+	updatedProduct, err := r.GetProductByID(ctx, product.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve updated product: %w", err)
+	}
+	return updatedProduct, nil
 }
 
 // DeleteProduct removes a product from the in-memory store by its ID.
@@ -152,11 +155,26 @@ func (r *productRepository) UpdateProduct(ctx context.Context, product *entity.P
 // Returns:
 //   - An error if any issues occur during deletion.
 func (r *productRepository) DeleteProduct(ctx context.Context, id int64) error {
-	delete(products, id)
-	err := r.cache.Delete(ctx, fmt.Sprintf("product:%d", id))
+	product, err := r.GetProductByID(ctx, id)
+	if err != nil {
+		return fmt.Errorf("failed to retrieve product before deletion: %w", err)
+	}
+
+	if product == nil {
+		return fmt.Errorf("product with ID %d not found", id)
+	}
+
+	err = r.db.Table("products").WithContext(ctx).Delete(&entity.Product{}, id).Error
+	if err != nil {
+		log.Logger.Error().Err(err).Int64("productID", id).Msg("Failed to delete product from database")
+		return fmt.Errorf("failed to delete product from database: %w", err)
+	}
+
+	err = r.cache.Delete(ctx, fmt.Sprintf("product:%d", id))
 	if err != nil {
 		log.Logger.Error().Err(err).Int64("productID", id).Msg("Failed to delete product from cache")
 		return fmt.Errorf("failed to delete product from cache: %w", err)
 	}
+
 	return nil
 }

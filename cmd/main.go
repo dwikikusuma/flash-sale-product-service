@@ -26,10 +26,10 @@ func main() {
 	log.InitLogger()
 
 	redisClient := resource.InitRedis(appConfig)
-	_ = resource.InitDB(appConfig)
+	db := resource.InitDB(appConfig)
 
 	cacheRepo := repository.NewCacheRepository(redisClient)
-	productRepo := repository.NewProductRepository(cacheRepo)
+	productRepo := repository.NewProductRepository(cacheRepo, db)
 	productService := service.NewProductService(productRepo)
 	productHandler := api.NewProductHandler(productService)
 
