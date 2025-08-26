@@ -1,20 +1,24 @@
 package api
 
 import (
+	"net/http"
+	"product-catalog-service/internal/entity"
+	"product-catalog-service/internal/service"
+	"strconv"
+
 	_ "github.com/golang-jwt/jwt/v5"
 	_ "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	_ "github.com/labstack/echo/v4"
 	_ "github.com/labstack/echo/v4/middleware"
-	"product-catalog-service/internal/entity"
-	"product-catalog-service/internal/service"
-	"strconv"
 )
 
 type ProductHandler interface {
 	ReleaseProductStock(c echo.Context) error
 	GetProductStock(c echo.Context) error
 	ReserveProductStock(c echo.Context) error
+	GetAllProducts(c echo.Context) error
+	CreateProduct(c echo.Context) error
 }
 
 type productHandler struct {
@@ -85,4 +89,32 @@ func (ph *productHandler) ReleaseProductStock(c echo.Context) error {
 	}
 
 	return c.JSON(200, map[string]string{"message": "Product stock released successfully"})
+}
+
+func (ph *productHandler) GetAllProducts(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	products, err := ph.ProductService.GetAllProducts(ctx)
+	if err != nil {
+		return c.JSON(500, map[string]string{"error": "Failed to retrieve products"})
+	}
+
+	return c.JSON(200, products)
+}
+
+func (ph *productHandler) CreateProduct(c echo.Context) error {
+	var product entity.Product
+	ctx := c.Request().Context()
+
+	err := c.Bind(&product)
+	if err != nil {
+		return c.JSON(400, map[string]string{"error": "Invalid product data"})
+	}
+
+	err = ph.ProductService.CreateProduct(ctx, &product)
+	if err != nil {
+		return c.JSON(500, map[string]string{"error": "Failed to create product"})
+	}
+
+	return c.JSON(http.StatusCreated, "Product created successfully")
 }

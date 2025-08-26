@@ -4,12 +4,12 @@ app:
 db:
   host: 127.0.0.1
   port: 3306
-  user: admin
-  password: password
-  name: productdb
+  user: root
+  password: rootpassword
+  name: productDB
 
 secret:
-  jwtsecret: "secret"
+  jwtSecret: "secret"
   
 redis:
     host: 127.0.0.1

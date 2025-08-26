@@ -25,6 +25,7 @@ func InitDB(appConfig config.Config) *gorm.DB {
 	})
 
 	if err != nil {
+		log.Printf("DSN: %s", dsn)
 		log.Fatal("Failed to connect to database:", err)
 	}
 

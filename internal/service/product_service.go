@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"product-catalog-service/infrastructure/log"
+	"product-catalog-service/internal/entity"
 	"product-catalog-service/internal/repository"
 )
 
@@ -11,6 +12,8 @@ type ProductService interface {
 	GetProductStock(ctx context.Context, productID int64) (int, error)
 	ReserveProductStock(ctx context.Context, productID int64, quantity int) (bool, error)
 	ReleaseProductStock(ctx context.Context, productID int64, quantity int) (bool, error)
+	GetAllProducts(ctx context.Context) ([]entity.Product, error)
+	CreateProduct(ctx context.Context, product *entity.Product) error
 }
 
 type productService struct {
@@ -94,4 +97,18 @@ func (p *productService) ReleaseProductStock(ctx context.Context, productID int6
 		return false, err
 	}
 	return true, nil
+}
+
+func (p *productService) GetAllProducts(ctx context.Context) ([]entity.Product, error) {
+	products, err := p.productRepo.GetProducts(ctx)
+	if err != nil {
+		log.Logger.Error().Err(err).Msg("Failed to get all products")
+		return nil, err
+	}
+
+	return products, nil
+}
+
+func (p *productService) CreateProduct(ctx context.Context, product *entity.Product) error {
+	return p.productRepo.CreateProduct(ctx, product)
 }

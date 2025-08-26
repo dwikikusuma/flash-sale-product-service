@@ -17,13 +17,12 @@ import (
 )
 
 func main() {
+	log.InitLogger()
 	appConfig := config.LoadConfig(
 		config.WithConfigFolder([]string{"./files/config"}),
 		config.WithConfigFile("config"),
 		config.WithConfigType("yaml"),
 	)
-
-	log.InitLogger()
 
 	redisClient := resource.InitRedis(appConfig)
 	db := resource.InitDB(appConfig)

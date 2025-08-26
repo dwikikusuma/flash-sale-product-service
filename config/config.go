@@ -1,6 +1,10 @@
 package config
 
-import "github.com/spf13/viper"
+import (
+	"product-catalog-service/infrastructure/log"
+
+	"github.com/spf13/viper"
+)
 
 type option struct {
 	ConfigFolder []string
@@ -40,6 +44,8 @@ func LoadConfig(opts ...Option) Config {
 		panic(err)
 	}
 
+	log.Logger.Info().Msg("Configuration loaded successfully")
+	log.Logger.Info().Interface("config", cfg).Msg("Loaded configuration details")
 	return cfg
 }
 

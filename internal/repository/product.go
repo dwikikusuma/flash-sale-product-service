@@ -43,6 +43,14 @@ type ProductRepository interface {
 	// Returns:
 	//   - An error if any issues occur during deletion.
 	DeleteProduct(ctx context.Context, id int64) error
+
+	// GetProducts retrieves all products from the database.
+	// Parameters:
+	//   - ctx: The context for managing request deadlines, cancellation signals, and other request-scoped values.
+	// Returns:
+	//   - A slice of Product entities if the operation is successful.
+	//   - Nil if an error occurs during the retrieval process.
+	GetProducts(ctx context.Context) ([]entity.Product, error)
 }
 
 // productRepository is a concrete implementation of the ProductRepository interface.
@@ -172,4 +180,14 @@ func (r *productRepository) DeleteProduct(ctx context.Context, id int64) error {
 	}
 
 	return nil
+}
+
+func (r *productRepository) GetProducts(ctx context.Context) ([]entity.Product, error) {
+	var products []entity.Product
+	err := r.db.Table("products").WithContext(ctx).Find(&products).Error
+	if err != nil {
+		log.Logger.Error().Err(err).Msg("Failed to get products from database")
+		return []entity.Product{}, err
+	}
+	return products, nil
 }
