@@ -15,3 +15,11 @@ redis:
     host: 127.0.0.1
     port: 6379
     password: "root"
+
+kafka:
+  brokers:
+    - "localhost:9092"
+    - "localhost:9093"
+    - "localhost:9094"
+  topic: "order-topic"
+  group_id: "product-group"

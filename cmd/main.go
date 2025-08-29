@@ -8,6 +8,7 @@ import (
 	"product-catalog-service/internal/resource"
 	"product-catalog-service/internal/service"
 	infrastructure "product-catalog-service/middleware"
+	"product-catalog-service/msgBroker"
 	"product-catalog-service/routes"
 	"time"
 
@@ -31,6 +32,9 @@ func main() {
 	productRepo := repository.NewProductRepository(cacheRepo, db)
 	productService := service.NewProductService(productRepo)
 	productHandler := api.NewProductHandler(productService)
+
+	consumer := msgBroker.NewMsgConsumer(productService)
+	go consumer.StartConsumer(appConfig.Kafka.Brokers, appConfig.Kafka.Topic, appConfig.Kafka.GroupID)
 
 	e := echo.New()
 	e.Use(middleware.RateLimiterWithConfig(infrastructure.GetRateLimiter()))

@@ -5,6 +5,7 @@ type Config struct {
 	DB     DB            `yaml:"db" validate:"required"`
 	Redis  Redis         `yaml:"redis" validate:"required"`
 	Secret SecreteConfig `yaml:"secret" validate:"required"`
+	Kafka  Kafka         `yaml:"kafka" validate:"required"`
 }
 
 type App struct {
@@ -20,11 +21,17 @@ type DB struct {
 }
 
 type SecreteConfig struct {
-	JWTSecret string `yaml:"jwt_secret" validate:"required"`
+	JWTSecret string `yaml:"jwtSecret" validate:"required"`
 }
 
 type Redis struct {
 	Host     string `yaml:"host" validate:"required"`
 	Port     string `yaml:"port" validate:"required"`
 	Password string `yaml:"password"`
+}
+
+type Kafka struct {
+	Brokers []string `mapstructure:"brokers" validate:"required"`
+	Topic   string   `mapstructure:"topic" validate:"required"`
+	GroupID string   `mapstructure:"group_id" validate:"required"`
 }
